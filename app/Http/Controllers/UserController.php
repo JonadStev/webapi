@@ -15,6 +15,7 @@ class UserController extends Controller
     {
         $credentials = $request->only('email', 'password');
         try {
+            JWTAuth::factory()->setTTL(5);
             if (! $token = JWTAuth::attempt($credentials)) {
                 return response()->json(['error' => 'invalid_credentials'], 400);
             }
@@ -37,7 +38,9 @@ class UserController extends Controller
         } catch (Tymon\JWTAuth\Exceptions\JWTException $e) {
             return response()->json(['token_absent'], $e->getStatusCode());
         }
-        return response()->json(compact('user'));
+        return response()->json([
+            'user' => $user->getJWTCustomClaims(),
+        ]);
     }
 
 
@@ -63,6 +66,15 @@ class UserController extends Controller
 
         return response()->json(compact('user','token'),201);
     }
+
+    public function refresh() {
+        $token = JWTAuth::parseToken()->refresh();
+        return response()->json([
+            'token' => $token,
+            'token_type' => 'bearer',
+        ]);
+    }
+
 
     public function logout( Request $request ) {
 
@@ -93,5 +105,29 @@ class UserController extends Controller
                 'message' => trans('auth.token.missing')
             ], 500 );
         }
+    }
+
+    public function updateUser(Request $request) {
+        $user = User::find($request->get('id'));
+        $user->name = $request->get('name');
+        $user->save();
+        return response()->json([
+            'error' => false,
+            'message' => 'Usuario modificado correctamente',
+        ]);
+    }
+
+    public function getUsers(){
+        $user = User::get();
+        return response()->json($user);
+    }
+
+    public function deleteUser($id){
+        $user = User::find($id);
+        $user->delete();
+        return response()->json([
+            'error' => false,
+            'message' => 'Usuario eliminado correctamente',
+        ]);
     }
 }
